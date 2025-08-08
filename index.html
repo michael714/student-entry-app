@@ -154,7 +154,7 @@
     <!-- Firebase SDK Imports & Main Script -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global variables for Firebase services
@@ -181,15 +181,25 @@
             const experienceLabel = document.getElementById('experience-label');
             const experienceTextarea = document.getElementById('experience');
 
-            // Retrieve Firebase config and app ID from the environment
-            // IMPORTANT: These global variables are provided by the immersive environment.
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-            const isProd = typeof NETLIFY === 'undefined' ? false : true;
+            // IMPORTANT: You MUST replace the content below with your actual Firebase config.
+            const firebaseConfig = {
+                // PASTE YOUR FIREBASE CONFIG HERE
+                const firebaseConfig = {
+                    apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
+                    authDomain: "student-flashcards.firebaseapp.com",
+                    projectId: "student-flashcards",
+                    storageBucket: "student-flashcards.firebasestorage.app",
+                    messagingSenderId: "737854832974",
+                    appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
+                    };
+            };
+            
+            // This is a placeholder for the app ID, it is not used for authentication.
+            // Replace with your actual app ID from Firebase project settings if needed for other purposes.
+            const appId = 'your-firebase-app-id';
 
             if (Object.keys(firebaseConfig).length === 0) {
-                showModal("Error: Firebase configuration is missing. The app will not be able to save data.");
+                showModal("Error: Firebase configuration is missing. Please add your Firebase config to the code.");
                 return;
             }
             
@@ -212,22 +222,18 @@
                         startWebcam();
 
                     } else {
-                        console.log("No user signed in. Attempting sign-in.");
+                        console.log("No user signed in. Attempting sign-in anonymously.");
                         try {
-                            if (initialAuthToken && !isProd) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
+                           await signInAnonymously(auth);
                         } catch (error) {
-                            console.error("Error during sign-in:", error);
+                            console.error("Error during anonymous sign-in:", error);
                             showModal("Error: Sign-in failed. Please try refreshing the page.");
                         }
                     }
                 });
             } catch (e) {
                 console.error("Error initializing Firebase:", e);
-                showModal("Error: Firebase initialization failed. Please check the configuration.");
+                showModal("Error: Firebase initialization failed. Please check your configuration.");
             }
 
             // Function to add a student profile to Firestore

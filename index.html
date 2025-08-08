@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Profile Entry App</title>
+    <title>Combined Student Profile App</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -61,6 +61,47 @@
         .modal-content {
             @apply bg-white p-8 rounded-xl shadow-2xl;
         }
+
+        /* Flashcard specific styles */
+        .flashcard-container {
+            perspective: 1000px;
+        }
+        .flashcard {
+            position: relative;
+            width: 100%;
+            height: 450px;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+        }
+        .flashcard.is-flipped {
+            transform: rotateY(180deg);
+        }
+        .flashcard-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 1.5rem;
+        }
+        .flashcard-front {
+            background-color: #e0f2fe; /* Light blue */
+            text-align: center;
+        }
+        .flashcard-back {
+            background-color: #ffffff;
+            transform: rotateY(180deg);
+            padding: 2rem;
+            text-align: left;
+        }
+        .flashcard-back h3, .flashcard-back p {
+            margin-bottom: 0.5rem;
+        }
         
         /* Toast notification styles */
         #toast-container {
@@ -86,15 +127,16 @@
     <!-- Main App Content -->
     <div id="combined-app" class="container mx-auto p-8 bg-gray-50 rounded-3xl shadow-2xl">
         <header class="text-center mb-12">
-            <h1 class="text-5xl font-bold text-indigo-700 mb-2">Student Profile Entry</h1>
-            <p class="text-lg text-gray-600">Enter new student profiles and view the gallery.</p>
+            <h1 class="text-5xl font-bold text-indigo-700 mb-2">Student Profiles</h1>
+            <p class="text-lg text-gray-600">Enter new profiles, view the gallery, or practice with flashcards!</p>
             <p id="user-id" class="text-xs text-gray-500 mt-2">Your User ID: Loading...</p>
         </header>
 
         <!-- Tab Navigation -->
         <div class="flex justify-center mb-8">
             <button id="tab-form" class="tab-btn active px-6 py-3 font-semibold rounded-full mr-2 shadow-md bg-indigo-600 text-white">Enter a Profile</button>
-            <button id="tab-gallery" class="tab-btn px-6 py-3 font-semibold rounded-full shadow-md bg-gray-200 text-gray-800">Student Gallery</button>
+            <button id="tab-gallery" class="tab-btn px-6 py-3 font-semibold rounded-full mr-2 shadow-md bg-gray-200 text-gray-800">Student Gallery</button>
+            <button id="tab-flashcards" class="tab-btn px-6 py-3 font-semibold rounded-full shadow-md bg-gray-200 text-gray-800">Flashcards</button>
         </div>
 
         <!-- Student Form Section -->
@@ -164,6 +206,28 @@
             </div>
         </section>
 
+        <!-- Flashcards Section -->
+        <section id="section-flashcards" class="tab-content hidden">
+            <div class="flex justify-center items-center mb-8">
+                <h2 class="text-3xl font-bold text-center text-indigo-700 mr-4">Flashcard Practice</h2>
+                <select id="period-filter" class="rounded-full border-gray-300 shadow-sm px-4 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="all">All Periods</option>
+                    <option value="1">Period 1</option>
+                    <option value="2">Period 2</option>
+                    <option value="3">Period 3</option>
+                    <option value="4">Period 4</option>
+                    <option value="6">Period 6</option>
+                </select>
+            </div>
+            
+            <div class="flex flex-col items-center">
+                <div id="flashcard-card-container" class="w-full max-w-sm flashcard-container mb-6">
+                    <!-- Flashcard will be dynamically inserted here -->
+                </div>
+                <button id="next-flashcard-btn" class="btn btn-primary w-48 disabled:opacity-50 disabled:cursor-not-allowed">Next Flashcard</button>
+            </div>
+        </section>
+
         <!-- Custom Modal UI for critical errors -->
         <div id="modal" class="modal fixed inset-0 z-50 overflow-auto flex items-center justify-center">
             <div class="modal-content w-full max-w-md">
@@ -192,7 +256,9 @@
         let currentUserId = ''; // To store the authenticated user ID
         
         let allStudents = []; // To hold all student data
-
+        let currentFilteredStudents = []; // To hold the currently filtered list for flashcards
+        let currentFlashcardIndex = 0; // Index for the flashcard game
+        
         // Initial setup for the app.
         window.onload = async function() {
             // DOM elements
@@ -213,18 +279,22 @@
             const experienceTextarea = document.getElementById('experience');
 
             // Gallery and Flashcard elements
+            const flashcardContainer = document.getElementById('flashcard-card-container');
+            const nextFlashcardBtn = document.getElementById('next-flashcard-btn');
+            const periodFilterSelect = document.getElementById('period-filter');
             const galleryDiv = document.getElementById('student-gallery'); 
             
             let stream;
             let capturedImageBase64 = null;
 
-            // Retrieve Firebase config and app ID from the environment
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+            // Retrieve Firebase config and app ID from the environment.
+            // Netlify's environment variable names cannot start with underscores.
+            const netlifyAppId = typeof NETLIFY_APP_ID !== 'undefined' ? NETLIFY_APP_ID : 'default-app-id';
+            const netlifyFirebaseConfig = typeof NETLIFY_FIREBASE_CONFIG !== 'undefined' ? JSON.parse(NETLIFY_FIREBASE_CONFIG) : {};
             const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-            const isProd = typeof NETLIFY === 'undefined' ? false : true;
+            const isProd = typeof NETLIFY !== 'undefined' ? false : true;
 
-            if (Object.keys(firebaseConfig).length === 0) {
+            if (Object.keys(netlifyFirebaseConfig).length === 0) {
                 showModal("Error: Firebase configuration is missing. The app will not be able to save data.");
                 return;
             }
@@ -235,7 +305,7 @@
             }
 
             try {
-                app = initializeApp(firebaseConfig);
+                app = initializeApp(netlifyFirebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 console.log("Firebase initialized successfully.");
@@ -275,7 +345,7 @@
             // Function to set up the real-time listener for student data
             function setupDataListener() {
                 if (db && currentUserId) {
-                    const collectionPath = `artifacts/${__app_id}/public/data/student-profiles`;
+                    const collectionPath = `artifacts/${netlifyAppId}/public/data/student-profiles`;
                     console.log("Setting up data listener for collection:", collectionPath);
                     const q = collection(db, collectionPath);
 
@@ -291,6 +361,7 @@
                         
                         // Update all views
                         renderGallery(allStudents);
+                        updateFlashcards();
                         
                     }, (error) => {
                         console.error("Error listening to student profiles:", error);
@@ -311,7 +382,7 @@
                     return;
                 }
                 try {
-                    const collectionPath = `artifacts/${__app_id}/public/data/student-profiles`;
+                    const collectionPath = `artifacts/${netlifyAppId}/public/data/student-profiles`;
                     console.log("Attempting to save data to path:", collectionPath);
                     const docRef = await addDoc(collection(db, collectionPath), {
                         ...profileData,
@@ -351,6 +422,81 @@
                 });
             };
             
+            // Flashcard logic
+            // Function to filter and update flashcards
+            function updateFlashcards() {
+                if (!periodFilterSelect) return;
+                const filterValue = periodFilterSelect.value;
+                if (filterValue === 'all') {
+                    currentFilteredStudents = [...allStudents];
+                } else {
+                    currentFilteredStudents = allStudents.filter(student => student.period === filterValue);
+                }
+                
+                currentFilteredStudents.sort(() => Math.random() - 0.5);
+
+                currentFlashcardIndex = 0;
+                if (currentFilteredStudents.length > 0) {
+                    displayFlashcard(currentFilteredStudents[currentFlashcardIndex]);
+                    if (nextFlashcardBtn) nextFlashcardBtn.disabled = false;
+                } else {
+                    if (flashcardContainer) flashcardContainer.innerHTML = '<p class="text-center text-gray-500">No students found for this period.</p>';
+                    if (nextFlashcardBtn) nextFlashcardBtn.disabled = true;
+                }
+            }
+            
+            function displayFlashcard(student) {
+                if (!student) {
+                    if (flashcardContainer) flashcardContainer.innerHTML = '<p class="text-center text-gray-500">No students to practice yet.</p>';
+                    return;
+                }
+
+                if (!flashcardContainer) return;
+                flashcardContainer.innerHTML = `
+                    <div id="flashcard" class="flashcard">
+                        <!-- Front of the card (photo) -->
+                        <div class="flashcard-face flashcard-front card flex-col justify-center items-center p-8 bg-indigo-50">
+                            <img src="${student.photo}" alt="Student Photo" class="w-56 h-56 object-cover rounded-3xl mb-4 shadow-lg ring-4 ring-indigo-300">
+                            <p class="text-lg font-semibold text-indigo-700">Click to reveal details</p>
+                        </div>
+                        <!-- Back of the card (details) -->
+                        <div class="flashcard-face flashcard-back card flex-col justify-center items-start p-8">
+                            <h3 class="text-2xl font-bold text-indigo-600 mb-2">${student.name}</h3>
+                            ${student.preferredName ? `<p class="text-lg font-medium text-gray-700">Preferred Name: <span class="font-normal">${student.preferredName}</span></p>` : ''}
+                            <p class="text-base text-gray-600">Class: <span class="font-semibold">${student.className}</span></p>
+                            <p class="text-base text-gray-600">Period: <span class="font-semibold">${student.period}</span></p>
+                            <p class="text-base text-gray-600 mt-2">Fun Fact: <span class="italic font-normal">${student.funFacts}</span></p>
+                            <p class="text-base text-gray-600 mt-2">Experience: <span class="italic font-normal">${student.experience}</span></p>
+                        </div>
+                    </div>
+                `;
+                const flashcard = document.getElementById('flashcard');
+                if (flashcard) {
+                    flashcard.addEventListener('click', () => {
+                        flashcard.classList.toggle('is-flipped');
+                    });
+                }
+            }
+            
+            if (nextFlashcardBtn) {
+                nextFlashcardBtn.addEventListener('click', () => {
+                    if (currentFilteredStudents.length > 0) {
+                        currentFlashcardIndex = (currentFlashcardIndex + 1) % currentFilteredStudents.length;
+                        const flashcard = document.getElementById('flashcard');
+                        if (flashcard && flashcard.classList.contains('is-flipped')) {
+                            flashcard.classList.remove('is-flipped');
+                        }
+                        setTimeout(() => {
+                            displayFlashcard(currentFilteredStudents[currentFlashcardIndex]);
+                        }, 300);
+                    }
+                });
+            }
+            
+            if (periodFilterSelect) {
+                periodFilterSelect.addEventListener('change', updateFlashcards);
+            }
+
             // Function to show a custom modal for critical errors
             window.showModal = (message) => {
                 const modal = document.getElementById('modal');
@@ -508,6 +654,12 @@
                         if(sectionEl) {
                            sectionEl.classList.add('block');
                            sectionEl.classList.remove('hidden');
+                        }
+
+                        if (button.id === 'tab-flashcards') {
+                            updateFlashcards();
+                        } else if (button.id === 'tab-form') {
+                            startWebcam();
                         }
                     });
                 });

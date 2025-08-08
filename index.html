@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Combined Student Profile App</title>
+    <title>Student Photo & Fun Facts App</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -56,7 +56,6 @@
         }
         .modal {
             display: none;
-            background-color: rgba(255,255,255,1);
         }
         .modal-content {
             @apply bg-white p-8 rounded-xl shadow-2xl;
@@ -120,12 +119,42 @@
         .toast.show {
             opacity: 1;
         }
+
+        /* Updated modal styles for better readability */
+        .modal {
+            background-color: rgba(31, 41, 55, 0.9); /* Darker, less transparent background */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            max-width: 400px;
+            text-align: center;
+        }
+        .modal-content h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+        .modal-content p {
+            color: #4b5563;
+            margin-bottom: 1.5rem;
+        }
+        .modal-close-btn {
+            @apply bg-indigo-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg hover:bg-indigo-700 transition-colors duration-200;
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
     <!-- Main App Content -->
-    <div id="combined-app" class="container mx-auto p-8 bg-gray-50 rounded-3xl shadow-2xl">
+    <div id="student-photo-app" class="container mx-auto p-8 bg-gray-50 rounded-3xl shadow-2xl">
         <header class="text-center mb-12">
             <h1 class="text-5xl font-bold text-indigo-700 mb-2">Student Profiles</h1>
             <p class="text-lg text-gray-600">Enter new profiles, view the gallery, or practice with flashcards!</p>
@@ -231,10 +260,10 @@
         <!-- Custom Modal UI for critical errors -->
         <div id="modal" class="modal fixed inset-0 z-50 overflow-auto flex items-center justify-center">
             <div class="modal-content w-full max-w-md">
-                <h3 class="text-xl font-bold text-gray-800 mb-4">When you're ready...</h3>
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Error Message</h3>
                 <p id="modal-message" class="text-gray-900 mb-6"></p>
                 <div class="flex justify-center">
-                    <button onclick="hideModal()" class="modal-close-btn">Start</button>
+                    <button onclick="hideModal()" class="modal-close-btn">Dismiss</button>
                 </div>
             </div>
         </div>
@@ -246,7 +275,7 @@
     <!-- Firebase SDK Imports & Main Script -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, addDoc, collection, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global variables for Firebase services
@@ -258,14 +287,12 @@
         let allStudents = []; // To hold all student data
         let currentFilteredStudents = []; // To hold the currently filtered list for flashcards
         let currentFlashcardIndex = 0; // Index for the flashcard game
-        
+
         // Initial setup for the app.
         window.onload = async function() {
             // DOM elements
             const tabButtons = document.querySelectorAll('.tab-btn');
             const tabContents = document.querySelectorAll('.tab-content');
-            
-            // Form elements
             const webcamVideo = document.getElementById('webcam-video');
             const captureCanvas = document.getElementById('capture-canvas');
             const captureBtn = document.getElementById('capture-btn');
@@ -277,8 +304,6 @@
             const experienceFieldContainer = document.getElementById('experience-field-container');
             const experienceLabel = document.getElementById('experience-label');
             const experienceTextarea = document.getElementById('experience');
-
-            // Gallery and Flashcard elements
             const flashcardContainer = document.getElementById('flashcard-card-container');
             const nextFlashcardBtn = document.getElementById('next-flashcard-btn');
             const periodFilterSelect = document.getElementById('period-filter');
@@ -286,66 +311,58 @@
             
             let stream;
             let capturedImageBase64 = null;
-
-            // Retrieve Firebase config and app ID from the environment.
-            // Netlify's environment variable names cannot start with underscores.
-            const netlifyAppId = typeof NETLIFY_APP_ID !== 'undefined' ? NETLIFY_APP_ID : 'default-app-id';
-            const netlifyFirebaseConfig = typeof NETLIFY_FIREBASE_CONFIG !== 'undefined' ? JSON.parse(NETLIFY_FIREBASE_CONFIG) : {};
-            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-            const isProd = typeof NETLIFY !== 'undefined' ? false : true;
-
-            if (Object.keys(netlifyFirebaseConfig).length === 0) {
-                showModal("Error: Firebase configuration is missing. The app will not be able to save data.");
-                return;
-            }
             
+            // --- NETLIFY-SPECIFIC CONFIGURATION ---
+            // You will need to set these variables in your Netlify environment settings.
+            // Go to your site settings -> Build & deploy -> Environment -> Environment variables.
+            // You can use the values from your Firebase project.
+            
+            // This is the app ID used to store data.
+            const appId = 'YOUR_NETLIFY_APP_ID';
+            // This is your Firebase configuration object, which should be stored as a JSON string.
+            const firebaseConfig = {
+                apiKey: "YOUR_API_KEY",
+                authDomain: "YOUR_AUTH_DOMAIN",
+                projectId: "YOUR_PROJECT_ID",
+                storageBucket: "YOUR_STORAGE_BUCKET",
+                messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+                appId: "YOUR_FIREBASE_APP_ID"
+            };
+
             // Initial loading state
             if (galleryDiv) {
                 galleryDiv.innerHTML = '<p class="text-center text-gray-500 col-span-full">Loading student profiles...</p>';
             }
 
             try {
-                app = initializeApp(netlifyFirebaseConfig);
+                // Initialize Firebase with your provided configuration
+                app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 console.log("Firebase initialized successfully.");
-                
-                // Auth state change listener
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        currentUserId = user.uid;
-                        console.log("User signed in with ID:", currentUserId);
-                        const userIdEl = document.getElementById('user-id');
-                        if (userIdEl) {
-                            userIdEl.textContent = `Your User ID: ${currentUserId}`;
-                        }
-                        // Start webcam and data listener after successful auth
-                        startWebcam();
-                        setupDataListener();
 
-                    } else {
-                        console.log("No user signed in. Attempting sign-in.");
-                        try {
-                            if (initialAuthToken && !isProd) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
-                        } catch (error) {
-                            console.error("Error during sign-in:", error);
-                            showModal("Error: Sign-in failed. Please try refreshing the page.");
-                        }
-                    }
-                });
+                // Sign in anonymously, as the custom token is for the Canvas environment only
+                const userCredential = await signInAnonymously(auth);
+                currentUserId = userCredential.user.uid;
+                console.log("User signed in anonymously with ID:", currentUserId);
+                const userIdEl = document.getElementById('user-id');
+                if (userIdEl) {
+                    userIdEl.textContent = `Your User ID: ${currentUserId}`;
+                }
+
+                // Start webcam and set up data listener
+                startWebcam();
+                setupDataListener();
+
             } catch (e) {
                 console.error("Error initializing Firebase:", e);
-                showModal("Error: Firebase initialization failed. Please check the configuration.");
+                showModal("Error: Firebase initialization or sign-in failed. Please check your configuration.");
             }
 
             // Function to set up the real-time listener for student data
             function setupDataListener() {
                 if (db && currentUserId) {
-                    const collectionPath = `artifacts/${netlifyAppId}/public/data/student-profiles`;
+                    const collectionPath = `artifacts/${appId}/public/data/student-profiles`;
                     console.log("Setting up data listener for collection:", collectionPath);
                     const q = collection(db, collectionPath);
 
@@ -382,7 +399,7 @@
                     return;
                 }
                 try {
-                    const collectionPath = `artifacts/${netlifyAppId}/public/data/student-profiles`;
+                    const collectionPath = `artifacts/${appId}/public/data/student-profiles`;
                     console.log("Attempting to save data to path:", collectionPath);
                     const docRef = await addDoc(collection(db, collectionPath), {
                         ...profileData,
@@ -391,8 +408,6 @@
                     });
                     console.log("New student profile added successfully with ID:", docRef.id);
                     showToast("Success! Your profile has been saved.");
-
-                    // Switch to the gallery tab after a successful submission
                     document.getElementById('tab-gallery').click();
                 } catch (e) {
                     console.error("Error adding document:", e);

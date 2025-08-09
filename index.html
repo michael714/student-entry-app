@@ -3,401 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Entry App</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Student Profile Entry - v1.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            color: #1f2937;
         }
-        .container {
-            max-width: 1200px;
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
         }
-        .btn {
-            @apply px-6 py-3 font-semibold rounded-full shadow-lg transition-all duration-300 transform hover:scale-105;
+        @media (min-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr 1fr;
+            }
         }
-        .btn-primary {
-            @apply bg-indigo-600 text-white hover:bg-indigo-700;
-        }
-        .btn-secondary {
-            @apply bg-gray-200 text-gray-800 hover:bg-gray-300;
-        }
-        .card {
-            @apply bg-white p-6 rounded-3xl shadow-xl transition-all duration-300 transform hover:shadow-2xl;
-        }
-        #webcam-video {
-            border-radius: 1.5rem;
-            width: 100%;
-            height: auto;
-            max-width: 400px;
-        }
-        #capture-canvas {
-            border-radius: 1.5rem;
-            display: none;
-            width: 100%;
-            height: auto;
-            max-width: 400px;
-        }
-        .modal {
-            display: none;
-            background-color: rgba(255,255,255,0.8);
-            backdrop-filter: blur(5px);
-        }
-        .modal-content {
-            @apply bg-white p-8 rounded-xl shadow-2xl;
-        }
-        
-        /* Toast notification styles */
-        #toast-container {
-            position: fixed;
-            top: 2rem;
-            right: 2rem;
-            z-index: 60;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-        .toast {
-            @apply bg-green-500 text-white p-4 rounded-lg shadow-lg transition-opacity duration-500 ease-in-out;
-            opacity: 0;
-        }
-        .toast.show {
-            opacity: 1;
+        .full-span {
+            grid-column: 1 / -1;
         }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
-    <!-- Main App Content -->
-    <div id="student-entry-app" class="container mx-auto p-8 bg-gray-50 rounded-3xl shadow-2xl">
-        <header class="text-center mb-12">
-            <h1 class="text-5xl font-bold text-indigo-700 mb-2">Student Entry App</h1>
-            <p class="text-lg text-gray-600">Enter a new student profile and photo.</p>
-            <p id="user-id" class="text-xs text-gray-500 mt-2">Your User ID: Loading...</p>
-        </header>
+<div class="container bg-white w-full max-w-4xl mx-auto p-6 md:p-8 rounded-2xl shadow-lg">
+    <h1 class="text-3xl font-bold text-gray-800 mb-2">Student Profile Entry</h1>
+    <p class="text-gray-500 mb-6">Version 1.6</p>
 
-        <!-- Student Form Section -->
-        <section id="section-form" class="tab-content block">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                <!-- Webcam & Photo Capture -->
-                <div class="flex flex-col items-center">
-                    <video id="webcam-video" autoplay playsinline class="w-full rounded-3xl shadow-lg"></video>
-                    <canvas id="capture-canvas" class="w-full rounded-3xl shadow-lg"></canvas>
-                    <div class="mt-4 flex space-x-4">
-                        <button id="capture-btn" class="btn btn-primary">Capture Photo</button>
-                        <button id="retake-btn" class="btn btn-secondary" style="display:none;">Retake Photo</button>
-                    </div>
-                </div>
-
-                <!-- Student Profile Form -->
-                <div class="card p-8">
-                    <form id="student-form" class="space-y-6">
-                        <div>
-                            <label for="name" class="block text-sm font-medium text-gray-700">Full Name</label>
-                            <input type="text" id="name" name="name" required class="mt-1 block w-full rounded-full border-gray-300 shadow-sm px-4 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        </div>
-                        <div>
-                            <label for="preferredName" class="block text-sm font-medium text-gray-700">Preferred Name (Optional)</label>
-                            <input type="text" id="preferredName" name="preferredName" class="mt-1 block w-full rounded-full border-gray-300 shadow-sm px-4 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        </div>
-                        <div>
-                            <label for="className" class="block text-sm font-medium text-gray-700">Class Name</label>
-                            <select id="className" name="className" required class="mt-1 block w-full rounded-full border-gray-300 shadow-sm px-4 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="" disabled selected>Select a class...</option>
-                                <option value="Computer Programming">Computer Programming</option>
-                                <option value="Statistics">Statistics</option>
-                                <option value="Algebra 2">Algebra 2</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="period" class="block text-sm font-medium text-gray-700">Class Period</label>
-                            <select id="period" name="period" required class="mt-1 block w-full rounded-full border-gray-300 shadow-sm px-4 py-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="" disabled selected>Select a period...</option>
-                                <option value="1">Period 1</option>
-                                <option value="2">Period 2</option>
-                                <option value="3">Period 3</option>
-                                <option value="4">Period 4</option>
-                                <option value="6">Period 6</option>
-                            </select>
-                        </div>
-                        <div id="experience-field-container">
-                            <label id="experience-label" for="experience" class="block text-sm font-medium text-gray-700">Experience</label>
-                            <textarea id="experience" name="experience" rows="3" class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm p-4 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-                        </div>
-                        <div>
-                            <label for="funFacts" class="block text-sm font-medium text-gray-700">Tell me a fun fact about you!</label>
-                            <textarea id="funFacts" name="funFacts" rows="3" required class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm p-4 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-                        </div>
-                        <button type="submit" id="submit-btn" class="btn btn-primary w-full">Submit Profile</button>
-                    </form>
-                </div>
+    <div id="entry" class="pt-6">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Add a New Student</h2>
+        <form id="student-form" class="form-grid">
+            <div class="full-span md:col-span-1 flex flex-col items-center gap-4 p-4 border rounded-lg bg-gray-50">
+                <video id="video" width="320" height="240" autoplay class="rounded-md bg-gray-900"></video>
+                <button type="button" id="snap" class="w-full bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">Take Photo</button>
+                <canvas id="canvas" width="320" height="240" class="hidden"></canvas>
             </div>
-        </section>
-
-        <!-- Custom Modal UI for critical errors -->
-        <div id="modal" class="modal fixed inset-0 z-50 overflow-auto flex items-center justify-center">
-            <div class="modal-content w-full max-w-md">
-                <h3 class="text-xl font-bold text-gray-800 mb-4">When you're ready...</h3>
-                <p id="modal-message" class="text-gray-900 mb-6"></p>
-                <div class="flex justify-center">
-                    <button onclick="hideModal()" class="modal-close-btn px-6 py-3 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700">Start</button>
-                </div>
+            
+            <div class="full-span md:col-span-1 flex flex-col items-center justify-center p-4 border rounded-lg bg-gray-50 min-h-[240px]">
+                <label class="font-medium text-gray-700 mb-2">Photo Preview:</label>
+                <img id="photo-preview" class="rounded-md max-w-[200px] max-h-[150px] hidden" alt="Your photo preview will appear here.">
+                <p id="no-photo-text" class="text-gray-500">No photo taken yet.</p>
             </div>
-        </div>
-        
-        <!-- Toast Notification Container -->
-        <div id="toast-container"></div>
+
+            <div>
+                <label for="given-name" class="block text-sm font-medium text-gray-700 mb-1">Given Name</label>
+                <input type="text" id="given-name" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label for="preferred-name" class="block text-sm font-medium text-gray-700 mb-1">Preferred Name</label>
+                <input type="text" id="preferred-name" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label for="period" class="block text-sm font-medium text-gray-700 mb-1">Class Period</label>
+                <select id="period" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Select a Period</option>
+                    <option value="1">Period 1</option>
+                    <option value="2">Period 2</option>
+                    <option value="3">Period 3</option>
+                    <option value="4">Period 4</option>
+                    <option value="6">Period 6</option>
+                </select>
+            </div>
+            <div>
+                <label for="class-name" class="block text-sm font-medium text-gray-700 mb-1">Class</label>
+                <select id="class-name" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Select a Class</option>
+                    <option value="Computer Programming">Computer Programming</option>
+                    <option value="Statistics">Statistics</option>
+                    <option value="Algebra 2">Algebra 2</option>
+                </select>
+            </div>
+            <div class="full-span">
+                <label for="experience" id="experience-label" class="block text-sm font-medium text-gray-700 mb-1">Tell me about your experience...</label>
+                <textarea id="experience" rows="4" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
+            </div>
+            <div class="full-span">
+                <label for="fun-fact" class="block text-sm font-medium text-gray-700 mb-1">One Fun Fact About You</label>
+                <textarea id="fun-fact" rows="3" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
+            </div>
+
+            <button type="submit" class="full-span bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-colors text-lg">Submit Profile</button>
+        </form>
+        <div id="status" class="mt-4 text-center font-semibold"></div>
     </div>
+</div>
 
-    <!-- Firebase SDK Imports & Main Script -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+<script>
+    // --- IMPORTANT: PASTE YOUR FIREBASE CONFIGURATION HERE ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
+        authDomain: "student-flashcards.firebaseapp.com",
+        projectId: "student-flashcards",
+        storageBucket: "student-flashcards.appspot.com",
+        messagingSenderId: "737854832974",
+        appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
+    };
 
-        // Global variables for Firebase services
-        let app;
-        let db;
-        let auth;
-        let currentUserId = '';
-        
-        let stream;
-        let capturedImageBase64 = null;
+    // --- Name of your collection in Firestore ---
+    const firestoreCollectionName = "artifacts/student-entry-app-2025/public";
 
-        window.onload = async function() {
-            // DOM elements
-            const webcamVideo = document.getElementById('webcam-video');
-            const captureCanvas = document.getElementById('capture-canvas');
-            const captureBtn = document.getElementById('capture-btn');
-            const retakeBtn = document.getElementById('retake-btn');
-            const studentForm = document.getElementById('student-form');
-            const webcamSection = document.getElementById('webcam-video');
-            const capturedImageSection = document.getElementById('capture-canvas');
-            const classNameSelect = document.getElementById('className');
-            const experienceFieldContainer = document.getElementById('experience-field-container');
-            const experienceLabel = document.getElementById('experience-label');
-            const experienceTextarea = document.getElementById('experience');
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-            // IMPORTANT: You MUST replace the content below with your actual Firebase config.
+    // DOM Elements
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const snapButton = document.getElementById('snap');
+    const photoPreview = document.getElementById('photo-preview');
+    const noPhotoText = document.getElementById('no-photo-text');
+    const form = document.getElementById('student-form');
+    const statusDiv = document.getElementById('status');
+    const classNameSelect = document.getElementById('class-name');
+    const experienceLabel = document.getElementById('experience-label');
+    let photoDataUrl = null;
 
-            const firebaseConfig = {
-                apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
-                authDomain: "student-flashcards.firebaseapp.com",
-                projectId: "student-flashcards",
-                storageBucket: "student-flashcards.firebasestorage.app",
-                messagingSenderId: "737854832974",
-                appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
-                };
-            
-            // This is a placeholder for the app ID. It is used to create a unique path
-            // in Firestore but is not for Firebase authentication.
-            const appId = 'student-entry-app-2025';
+    // --- Camera Logic ---
+    async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            video.srcObject = stream;
+            video.play();
+        } catch (err) {
+            console.error("Error accessing camera: ", err);
+            statusDiv.textContent = "Could not access camera. Please allow camera permissions.";
+        }
+    }
 
-            // --- DEBUGGING STEP: Log the config to the console ---
-            console.log("Firebase config loaded:", firebaseConfig);
+    snapButton.addEventListener('click', function() {
+        const context = canvas.getContext('2d');
+        context.drawImage(video, 0, 0, 320, 240);
+        photoDataUrl = canvas.toDataURL('image/jpeg');
+        photoPreview.src = photoDataUrl;
+        photoPreview.classList.remove('hidden');
+        noPhotoText.classList.add('hidden');
+    });
+    
+    // --- Dynamic Form Logic ---
+    classNameSelect.addEventListener('change', function() {
+        if (this.value === 'Computer Programming') {
+            experienceLabel.textContent = "How much experience do you have with computer programming?";
+        } else if (this.value === 'Statistics' || this.value === 'Algebra 2') {
+            experienceLabel.textContent = "Tell me a little about your past experience with math class.";
+        } else {
+            experienceLabel.textContent = "Tell me about your experience...";
+        }
+    });
 
-            if (!firebaseConfig.projectId) {
-                showModal("Error: Firebase configuration is missing. Please add your config to the code and redeploy.");
-                console.error("Firebase Initialization Error: The firebaseConfig object is empty or missing 'projectId'.");
-                return;
-            }
-            
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                console.log("Firebase initialized successfully.");
-                
-                // Auth state change listener
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        currentUserId = user.uid;
-                        console.log("User signed in with ID:", currentUserId);
-                        const userIdEl = document.getElementById('user-id');
-                        if (userIdEl) {
-                            userIdEl.textContent = `Your User ID: ${currentUserId}`;
-                        }
-                        // Start webcam after successful auth
-                        startWebcam();
+    // --- Form Submission Logic ---
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        statusDiv.textContent = 'Submitting...';
+        statusDiv.classList.remove('text-red-500', 'text-green-500');
 
-                    } else {
-                        console.log("No user signed in. Attempting anonymous sign-in.");
-                        try {
-                           await signInAnonymously(auth);
-                        } catch (error) {
-                            console.error("Error during anonymous sign-in:", error);
-                            showModal("Error: Sign-in failed. Please check your Firebase Authentication settings.");
-                        }
-                    }
-                });
-            } catch (e) {
-                console.error("Error initializing Firebase:", e);
-                showModal("Critical Error: Firebase initialization failed. Please check your config and redeploy.");
-            }
+        if (!photoDataUrl) {
+            statusDiv.textContent = 'Please take a photo before submitting.';
+            statusDiv.classList.add('text-red-500');
+            return;
+        }
 
-            // Function to add a student profile to Firestore
-            window.addStudentProfile = async (profileData) => {
-                if (!db || !currentUserId) {
-                    showToast("Please wait for Firebase to initialize before submitting.");
-                    console.error("Attempted to submit before Firebase was ready.");
-                    return;
-                }
-                try {
-                    const collectionPath = `artifacts/${appId}/public/data/student-profiles`;
-                    console.log("Attempting to save data to path:", collectionPath);
-                    const docRef = await addDoc(collection(db, collectionPath), {
-                        ...profileData,
-                        timestamp: serverTimestamp(),
-                        userId: currentUserId
-                    });
-                    console.log("New student profile added successfully with ID:", docRef.id);
-                    showToast("Success! Your profile has been saved.");
-                } catch (e) {
-                    console.error("Error adding document:", e);
-                    showToast(`Error saving profile: ${e.message}`, 'error');
-                }
-            };
-
-            // Function to show a custom modal for critical errors
-            window.showModal = (message) => {
-                const modal = document.getElementById('modal');
-                const modalMessage = document.getElementById('modal-message');
-                if (modal && modalMessage) {
-                    modalMessage.textContent = message;
-                    modal.style.display = 'flex';
-                }
-            };
-
-            // Function to hide the custom modal
-            window.hideModal = () => {
-                const modal = document.getElementById('modal');
-                if (modal) {
-                    modal.style.display = 'none';
-                }
-            };
-
-            // Function to show a non-blocking toast notification
-            window.showToast = (message) => {
-                const toastContainer = document.getElementById('toast-container');
-                if (toastContainer) {
-                    const toast = document.createElement('div');
-                    toast.className = 'toast show bg-green-500 text-white';
-                    toast.textContent = message;
-                    toastContainer.appendChild(toast);
-                    
-                    setTimeout(() => {
-                        toast.classList.remove('show');
-                        setTimeout(() => toast.remove(), 500);
-                    }, 3000);
-                }
-            };
-
-            // Function to start the webcam
-            async function startWebcam() {
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    webcamVideo.srcObject = stream;
-                    webcamVideo.onloadedmetadata = () => webcamVideo.play();
-                } catch (err) {
-                    console.error("Error accessing webcam:", err);
-                }
-            }
-
-            // Function to stop the webcam
-            function stopWebcam() {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
-            }
-
-            // Event listener for the capture button
-            if(captureBtn) {
-                captureBtn.addEventListener('click', () => {
-                    if (webcamVideo && webcamVideo.srcObject) {
-                        captureCanvas.width = webcamVideo.videoWidth;
-                        captureCanvas.height = webcamVideo.videoHeight;
-                        const context = captureCanvas.getContext('2d');
-                        context.drawImage(webcamVideo, 0, 0, captureCanvas.width, captureCanvas.height);
-                        capturedImageBase64 = captureCanvas.toDataURL('image/jpeg');
-
-                        if (webcamSection) webcamSection.style.display = 'none';
-                        if (capturedImageSection) capturedImageSection.style.display = 'block';
-                        if (captureBtn) captureBtn.style.display = 'none';
-                        if (retakeBtn) retakeBtn.style.display = 'block';
-
-                        stopWebcam();
-                    }
-                });
-            }
-
-            // Event listener for the retake button
-            if (retakeBtn) {
-                retakeBtn.addEventListener('click', () => {
-                    capturedImageBase64 = null;
-                    if (webcamSection) webcamSection.style.display = 'block';
-                    if (capturedImageSection) capturedImageSection.style.display = 'none';
-                    if (captureBtn) captureBtn.style.display = 'block';
-                    if (retakeBtn) retakeBtn.style.display = 'none';
-                    startWebcam();
-                });
-            }
-
-            // Event listener for conditional experience field
-            if (classNameSelect && experienceFieldContainer && experienceLabel && experienceTextarea) {
-                classNameSelect.addEventListener('change', (e) => {
-                    const className = e.target.value;
-                    if (className === 'Computer Programming') {
-                        experienceLabel.textContent = "How much experience do you have with programming?";
-                        experienceTextarea.placeholder = "e.g., I've built a few websites with HTML/CSS.";
-                    } else if (className === 'Statistics' || className === 'Algebra 2') {
-                        experienceLabel.textContent = "Tell me a little about your past experience with math.";
-                        experienceTextarea.placeholder = "e.g., I enjoyed my last math class but found some parts challenging.";
-                    } else {
-                        experienceLabel.textContent = "Experience";
-                        experienceTextarea.placeholder = "";
-                    }
-                });
-            }
-            
-            // Event listener for the form submission
-            if (studentForm && webcamSection && capturedImageSection && captureBtn && retakeBtn && experienceFieldContainer) {
-                studentForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-
-                    if (!capturedImageBase64) {
-                        showToast("Please take a photo before submitting.");
-                        return;
-                    }
-
-                    const formData = new FormData(studentForm);
-                    const studentProfile = {
-                        name: formData.get('name'),
-                        preferredName: formData.get('preferredName'),
-                        className: formData.get('className'),
-                        period: formData.get('period'),
-                        experience: formData.get('experience'),
-                        funFacts: formData.get('funFacts'),
-                        photo: capturedImageBase64,
-                    };
-
-                    await addStudentProfile(studentProfile);
-
-                    studentForm.reset();
-                    experienceLabel.textContent = "Experience";
-                    experienceTextarea.placeholder = "";
-                    capturedImageBase64 = null;
-                    webcamSection.style.display = 'block';
-                    capturedImageSection.style.display = 'none';
-                    captureBtn.style.display = 'block';
-                    retakeBtn.style.display = 'none';
-                    
-                    startWebcam();
-                });
-            }
+        const studentData = {
+            givenName: document.getElementById('given-name').value,
+            preferredName: document.getElementById('preferred-name').value,
+            period: document.getElementById('period').value,
+            className: document.getElementById('class-name').value,
+            experience: document.getElementById('experience').value,
+            funFact: document.getElementById('fun-fact').value,
+            photo: photoDataUrl,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
-    </script>
+
+        try {
+            await db.collection(firestoreCollectionName).add(studentData);
+            statusDiv.textContent = 'Profile submitted successfully!';
+            statusDiv.classList.add('text-green-500');
+            form.reset();
+            photoPreview.classList.add('hidden');
+            noPhotoText.classList.remove('hidden');
+            photoDataUrl = null;
+            // Clear the success message after 3 seconds
+            setTimeout(() => {
+                statusDiv.textContent = '';
+            }, 3000);
+        } catch (error) {
+            console.error("Error adding document: ", error);
+            statusDiv.textContent = 'Error submitting profile. See console for details.';
+            statusDiv.classList.add('text-red-500');
+        }
+    });
+    
+    // --- Initial Load ---
+    startCamera();
+
+</script>
+
 </body>
 </html>

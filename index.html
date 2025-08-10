@@ -93,14 +93,8 @@
 
 <script>
     // --- IMPORTANT: PASTE YOUR FIREBASE CONFIGURATION HERE ---
-    const firebaseConfig = {
-        apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
-        authDomain: "student-flashcards.firebaseapp.com",
-        projectId: "student-flashcards",
-        storageBucket: "student-flashcards.appspot.com",
-        messagingSenderId: "737854832974",
-        appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
-    };
+    // Safely parse the configuration object from the environment variable provided by Netlify
+    const firebaseConfig = JSON.parse(import.meta.env.VITE_FIREBASE_CONFIG);
 
     // --- Name of your collection in Firestore ---
     const firestoreCollectionName = "artifacts/student-entry-app-2025/public";
